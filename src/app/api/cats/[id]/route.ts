@@ -6,12 +6,12 @@ const checkRateLimit = rateLimit(60); // 60 requests per minute
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await checkRateLimit();
 
-    const { id } = params;
+    const { id } = await params;
 
     if (!id || typeof id !== 'string') {
       throw new Error('Invalid cat ID');

@@ -7,7 +7,7 @@ import { APIError } from '@/lib/api-utils';
 import { ImageWithLoading } from '@/components/ui/image';
 
 interface CatDetailPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 async function getCatData(id: string) {
@@ -26,7 +26,8 @@ async function getCatData(id: string) {
 export async function generateMetadata({
   params
 }: CatDetailPageProps): Promise<Metadata> {
-  const data = await getCatData(params.id);
+  const { id } = await params;
+  const data = await getCatData(id);
 
   if (!data) {
     return {
@@ -53,7 +54,8 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 }
 
 export default async function CatPage({ params }: CatDetailPageProps) {
-  const data = await getCatData(params.id);
+  const { id } = await params;
+  const data = await getCatData(id);
 
   if (!data) {
     notFound();
