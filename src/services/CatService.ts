@@ -4,8 +4,13 @@ import { APIError } from '@/lib/api-utils';
 
 const CACHE_TIME = 5 * 60 * 1000; // 5 minutes in milliseconds
 
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
 export class CatService implements ICatService {
-  private cache: Map<string, { data: any; timestamp: number }>;
+  private cache: Map<string, CacheEntry<Cat | Cat[] | Category[]>>;
   private readonly baseUrl: string;
 
   constructor() {

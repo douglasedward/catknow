@@ -37,12 +37,17 @@ export class APIError extends Error {
   }
 }
 
+interface MemoryCacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
-const memoryCache = new Map<string, { data: any; timestamp: number }>();
+const memoryCache = new Map<string, MemoryCacheEntry<unknown>>();
 
 const isBrowser = typeof window !== 'undefined';
 
-async function getCachedData(url: string) {
+async function getCachedData<T>(url: string): Promise<T | null> {
   if (isBrowser && 'caches' in window) {
     try {
       const cache = await caches.open('catknow-api-cache');
@@ -55,7 +60,7 @@ async function getCachedData(url: string) {
         );
 
         if (Date.now() - cacheTime.getTime() < CACHE_DURATION) {
-          return data;
+          return data as T;
         }
       }
     } catch (error) {
@@ -64,13 +69,13 @@ async function getCachedData(url: string) {
   } else {
     const cached = memoryCache.get(url);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      return cached.data;
+      return cached.data as T;
     }
   }
   return null;
 }
 
-async function setCachedData(url: string, data: any) {
+async function setCachedData<T>(url: string, data: T): Promise<void> {
   if (isBrowser && 'caches' in window) {
     try {
       const cache = await caches.open('catknow-api-cache');
@@ -90,19 +95,20 @@ async function setCachedData(url: string, data: any) {
   }
 }
 
-export async function fetchWithCache(
+export async function fetchWithCache<T>(
   url: string,
   init?: RequestInit & { bypassCache?: boolean }
-): Promise<any> {
+): Promise<T> {
   const shouldCache =
     !init?.bypassCache && (!init?.method || init.method === 'GET');
 
   if (!shouldCache) {
-    return fetch(url, init).then((res) => res.json());
+    const response = await fetch(url, init);
+    return response.json() as Promise<T>;
   }
 
   try {
-    const cachedData = await getCachedData(url);
+    const cachedData = await getCachedData<T>(url);
     if (cachedData) {
       return cachedData;
     }
@@ -112,7 +118,7 @@ export async function fetchWithCache(
       throw APIError.fromResponse(response);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as T;
     await setCachedData(url, data);
     return data;
   } catch (error) {
