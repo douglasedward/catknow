@@ -54,7 +54,6 @@ export function CategoryFilter({
         className
       )}
       aria-label="Category filter"
-      role="navigation"
     >
       <Button
         variant={!selected ? 'default' : 'outline'}
