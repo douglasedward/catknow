@@ -1,11 +1,11 @@
 'use client';
 import { useEffect, useRef, memo } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
 import type { Cat } from '@/types';
 import { useCatService } from '@/app/providers';
 import CatCard from './CatCard';
 import List from './List';
 import { cn } from '@/lib/utils';
+import { useInfiniteData } from '@/hooks/useInfiniteData';
 
 interface InfiniteScrollProps {
   initialItems: Cat[];
@@ -43,8 +43,6 @@ const ErrorMessage = ({
   </div>
 );
 
-const FIVE_MINUTES = 1000 * 60 * 5;
-
 const InfiniteScroll = ({
   initialItems,
   initialPage,
@@ -55,44 +53,20 @@ const InfiniteScroll = ({
 }: InfiniteScrollProps) => {
   const catService = useCatService();
   const observerTarget = useRef<HTMLDivElement>(null);
-  const prevFiltersRef = useRef(filters);
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    error,
-    isError,
-    refetch
-  } = useInfiniteQuery({
-    queryKey: ['cats', filters],
-    initialPageParam: initialPage,
-    getNextPageParam: (lastPage, allPages) => {
-      if (!lastPage || lastPage.length < limit) return undefined;
-      return allPages.length;
-    },
-    queryFn: async ({ pageParam = initialPage }) => {
-      return catService.getCats(pageParam, limit, filters);
-    },
-    initialData: {
-      pages: [initialItems],
-      pageParams: [initialPage]
-    },
-    staleTime: FIVE_MINUTES
-  });
-
-  useEffect(() => {
-    if (prevFiltersRef.current !== filters) {
-      window.scrollTo(0, 0);
-      prevFiltersRef.current = filters;
-    }
-  }, [filters]);
+  const { items, error, isFetchingNext, hasNextPage, fetchNextPage, refetch } =
+    useInfiniteData({
+      initialItems,
+      initialPage,
+      limit,
+      key: filters,
+      fetchFn: (page: number) => catService.getCats(page, limit, filters)
+    });
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNext) {
           fetchNextPage();
         }
       },
@@ -106,19 +80,10 @@ const InfiniteScroll = ({
     }
 
     return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  }, [fetchNextPage, hasNextPage, isFetchingNext]);
 
-  const items = data?.pages.flat() ?? [];
-
-  if (isError) {
-    return (
-      <ErrorMessage
-        message={
-          error instanceof Error ? error.message : 'Failed to load items'
-        }
-        onRetry={() => refetch()}
-      />
-    );
+  if (error) {
+    return <ErrorMessage message={error.message} onRetry={refetch} />;
   }
 
   return (
@@ -127,7 +92,7 @@ const InfiniteScroll = ({
 
       <div ref={observerTarget} />
 
-      {isFetchingNextPage && <LoadingIndicator />}
+      {isFetchingNext && <LoadingIndicator />}
     </div>
   );
 };
