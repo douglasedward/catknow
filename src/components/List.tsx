@@ -68,8 +68,10 @@ const List = memo(
       overscan: 4
     });
 
+    const virtualItems = rowVirtualizer.getVirtualItems();
+
     const renderedRows = useMemo(() => {
-      return rowVirtualizer.getVirtualItems().map((virtualRow) => {
+      return virtualItems.map((virtualRow) => {
         const rowIndex = virtualRow.index;
         const start = rowIndex * columns;
         const end = Math.min(start + columns, items.length);
@@ -105,7 +107,7 @@ const List = memo(
           </Fragment>
         );
       });
-    }, [rowVirtualizer.getVirtualItems(), columns, items, renderItem]);
+    }, [virtualItems, columns, items, renderItem]);
 
     if (!items.length) {
       return (
